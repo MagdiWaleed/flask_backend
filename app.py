@@ -8,11 +8,13 @@ db = SQLAlchemy()
 
 
 def create_app():
-    app = Flask(__name__)
+    app = Flask(__name__,static_url_path='/profile_pics', static_folder='profile_pics')
 
     app.config['SQLALCHEMY_DATABASE_URI'] ='sqlite:///db.db'
 
     app.secret_key = 'SOME KEY'
+    app.config['UPLOAD_FOLDER'] = 'profile_pics'
+    
 
     
     db.init_app(app)
