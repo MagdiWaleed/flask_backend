@@ -24,11 +24,19 @@ def register_routes(app, db):
         name = data ['name']
         student_id = data ['student_id']
         password = data['password']
+
+        
         
         is_exist = Student.query.filter(Student.email == email).first()
         print(email)
         if is_exist:
             return jsonify({"error": "There Are Already Account With This Email"}),400 
+        level,gender = False, False
+
+        if 'level' in data:
+            level = True
+        if 'gender' in data:
+            gender =True
 
         student = Student(
             email=email,
@@ -36,6 +44,13 @@ def register_routes(app, db):
             student_id= student_id,
             password= password,
         )
+
+        print("data['gender']",data['gender'])
+        if level:
+            student.level= data['level']
+        if gender:
+            student.gender= data['gender']
+
         student.generateToken()
 
         db.session.add(student)
@@ -71,17 +86,38 @@ def register_routes(app, db):
         try:
             if 'level' in data:
                 level = True
-            elif 'gender' in data:
+            if 'gender' in data:
                 gender =True
 
+            print('im here')
             if 'profile_pic_path' in request.files:
-                if student.profile_pic == "DELETE" or student.profile_pic != 'DEFAULT_PROFILE_IMAGE.png':
+                
+                print('im here')
+                if student.profile_pic and student.profile_pic != 'DEFAULT_PROFILE_IMAGE.png':
+                    print('im here')
                     os.remove(os.path.join(app.config['UPLOAD_FOLDER'],student.profile_pic))
 
-                profile_pic = request.files['profile_pic_path']
-                profile_pic_name = secure_filename(profile_pic.filename)
-                profile_pic.save(os.path.join(app.config['UPLOAD_FOLDER'],profile_pic_name))
-                student.profile_pic = profile_pic_name
+                    profile_pic = request.files['profile_pic_path']
+                    print(profile_pic)
+                    profile_pic_name = secure_filename(profile_pic.filename)
+                    print(profile_pic_name)
+                    profile_pic.save(os.path.join(app.config['UPLOAD_FOLDER'],profile_pic_name))
+                    student.profile_pic = profile_pic_name
+                
+                elif not student.profile_pic and student.profile_pic != 'DEFAULT_PROFILE_IMAGE.png':
+                    profile_pic = request.files['profile_pic_path']
+                    print(profile_pic)
+                    profile_pic_name = secure_filename(profile_pic.filename)
+                    print(profile_pic_name)
+                    profile_pic.save(os.path.join(app.config['UPLOAD_FOLDER'],profile_pic_name))
+                    student.profile_pic = profile_pic_name
+
+            
+            elif 'profile_pic_path' in data:
+                if student.profile_pic and data['profile_pic_path'] == "DELETE" :
+                    os.remove(os.path.join(app.config['UPLOAD_FOLDER'],student.profile_pic))
+                    student.profile_pic = None
+
 
             student.email= email 
             student.name = name 
