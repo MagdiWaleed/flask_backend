@@ -10,6 +10,7 @@ def register_routes(app, db):
     def login():
         data = request.get_json()
         student = Student.query.filter( Student.email == data['email']).first()
+        print(data['email'])
         if not student:
             return jsonify({'error': 'There Is No Student With This Email'}), 400
             
