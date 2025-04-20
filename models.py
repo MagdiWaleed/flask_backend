@@ -47,3 +47,11 @@ class Store(db.Model):
             "store_location_longitude": self.store_location_longitude,
             "store_location_latitude": self.store_location_latitude
         }
+    
+
+class StudentStoresRelation(db.Model):
+    id = db.Column(db.Integer, primary_key=True, unique=True)
+    studentid=db.Column(db.Integer)
+    storeid = db.Column(db.Integer)
+
+    

@@ -1,5 +1,5 @@
 from flask import request,jsonify
-from models import Student, Store
+from models import Student, Store, StudentStoresRelation
 from werkzeug.utils import secure_filename
 import json
 import os
@@ -94,23 +94,24 @@ def register_routes(app, db):
             if 'profile_pic_path' in request.files:
                 
                 if student.profile_pic and student.profile_pic != 'DEFAULT_PROFILE_IMAGE.png':
-                    os.remove(os.path.join(app.config['UPLOAD_FOLDER'],student.profile_pic))
+                    os.remove(os.path.join(app.config['UPLOAD_FOLDER'],"profile_pics",student.profile_pic))
 
                     profile_pic = request.files['profile_pic_path']
                     profile_pic_name = secure_filename(profile_pic.filename)
-                    profile_pic.save(os.path.join(app.config['UPLOAD_FOLDER'],profile_pic_name))
+                    profile_pic.save(os.path.join(app.config['UPLOAD_FOLDER'],"profile_pics",profile_pic_name))
                     student.profile_pic = profile_pic_name
                 
                 elif not student.profile_pic and student.profile_pic != 'DEFAULT_PROFILE_IMAGE.png':
                     profile_pic = request.files['profile_pic_path']
                     profile_pic_name = secure_filename(profile_pic.filename)
-                    profile_pic.save(os.path.join(app.config['UPLOAD_FOLDER'],profile_pic_name))
-                    student.profile_pic = profile_pic_name
+                    profile_pic_path = os.path.join(app.config['UPLOAD_FOLDER'],"profile_pics",profile_pic_name)
+                    profile_pic.save(profile_pic_path)
+                    student.profile_pic = profile_pic_path
 
             
             elif 'profile_pic_path' in data:
                 if student.profile_pic and data['profile_pic_path'] == "DELETE" :
-                    os.remove(os.path.join(app.config['UPLOAD_FOLDER'],student.profile_pic))
+                    os.remove(os.path.join(app.config['UPLOAD_FOLDER'],"profile_pics",student.profile_pic))
                     student.profile_pic = None
 
 
@@ -134,7 +135,7 @@ def register_routes(app, db):
         if not student:
             return jsonify({'error':"You Are Not Authorized"})
         if student.profile_pic:
-            os.remove(os.path.join(app.config['UPLOAD_FOLDER'],student.profile_pic))
+            os.remove(os.path.join(app.config['UPLOAD_FOLDER'],"profile_pics",student.profile_pic))
         
         db.session.delete(student)  
         db.session.commit()  
@@ -156,17 +157,24 @@ def register_routes(app, db):
 
     @app.route('/stores/', methods=['POST'])
     def create_store():
-        data = request.get_json()
+        data = json.loads(request.form['data'])
         store = Store(
             store_name=data['store_name'],
-            store_image=data.get('store_image'),
             store_review=data['store_review'],
             store_location_longitude=data['store_location_longitude'],
             store_location_latitude=data['store_location_latitude']
         )
+        if 'store_img' in request.files:
+            store_img = request.files['store_img']
+            store_img_name = secure_filename(store_img.filename)
+            store_img_path = os.path.join(app.config['UPLOAD_FOLDER'],"store_imgs",store_img_name)
+            store_img.save(store_img_path)
+            store.store_image = store_img_path
+        else:
+            return jsonify({"error":"Error In Store Image"}), 400
         db.session.add(store)
         db.session.commit()
-        return jsonify({'message': 'Store created successfully', 'store': store.toMap()}), 201
+        return jsonify({'message': 'Store created successfully'}), 200
 
     @app.route('/stores/<int:store_id>/', methods=['PUT'])
     def update_store(store_id):
@@ -191,11 +199,44 @@ def register_routes(app, db):
             return jsonify({'error': 'Store not found'}), 404
 
         if store.store_image:
-            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], store.store_image))
+            os.remove(os.path.join(app.config['UPLOAD_FOLDER'],"profile_pics", store.store_image))
 
         db.session.delete(store)
         db.session.commit()
         return jsonify({'message': 'Store deleted successfully'})
+    
+
+    @app.route('/stores/addtofavo/',methods=['POST'])
+    def addtofavo():
+        data = request.get_json()
+        studentid = data['userid']
+        storeid = data['storeid']
+        is_exist = StudentStoresRelation.query.filter(StudentStoresRelation.studentid == studentid,StudentStoresRelation.storeid == storeid).first()
+        if is_exist:
+            return jsonify({"error": "This Relation Is Already Exist"}),400
+        studentStoreRelation = StudentStoresRelation(
+            studentid,
+            storeid
+        )
+        db.session.add(studentStoreRelation)
+        db.session.commit()
+        return jsonify({"message": "Added successfully to The Favo."}),200
+
+    @app.route('/stores/removefromfavo/',methods=['POST'])
+    def removefromfavo():
+        data = request.get_json()
+        studentid = data['userid']
+        storeid = data['storeid']
+        relation = StudentStoresRelation.query.filter(StudentStoresRelation.studentid == studentid,StudentStoresRelation.storeid == storeid).first()
+        if not relation:
+            return jsonify({"error": "This Relation Is Not Exist"}),400
+        
+        db.session.delete(relation)
+        db.session.commit()
+        return jsonify({"message": "Removed Successfully From The Favo."}),200
+        
+
+        
 
 
     
