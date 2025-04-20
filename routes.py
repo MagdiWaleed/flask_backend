@@ -3,6 +3,9 @@ from models import Student, Store, StudentStoresRelation
 from werkzeug.utils import secure_filename
 import json
 import os
+import uuid
+from copy import deepcopy
+
 
 
 def register_routes(app, db):
@@ -97,15 +100,16 @@ def register_routes(app, db):
                     os.remove(os.path.join(app.config['UPLOAD_FOLDER'],"profile_pics",student.profile_pic))
 
                     profile_pic = request.files['profile_pic_path']
-                    profile_pic_name = secure_filename(profile_pic.filename)
+                    profile_pic_extension = str(profile_pic.filename).split(".")[-1]
+                    profile_pic_name = secure_filename(str(uuid.uuid4()))+"."+profile_pic_extension
                     profile_pic_path = os.path.join(app.config['UPLOAD_FOLDER'],"profile_pics",profile_pic_name)
-                    print(profile_pic_name)
                     profile_pic.save(profile_pic_path)
                     student.profile_pic = profile_pic_name
                 
                 elif not student.profile_pic and student.profile_pic != 'DEFAULT_PROFILE_IMAGE.png':
                     profile_pic = request.files['profile_pic_path']
-                    profile_pic_name = secure_filename(profile_pic.filename)
+                    profile_pic_extension = str(profile_pic.filename).split(".")[-1]
+                    profile_pic_name = secure_filename(str(uuid.uuid4()))+"."+profile_pic_extension
                     profile_pic_path = os.path.join(app.config['UPLOAD_FOLDER'],"profile_pics",profile_pic_name)
                     profile_pic.save(profile_pic_path)
                     student.profile_pic = profile_pic_name
@@ -148,7 +152,21 @@ def register_routes(app, db):
     @app.route('/stores/', methods=['GET'])
     def get_stores():
         stores = Store.query.all()
-        return jsonify([store.toMap() for store in stores])
+        token = request.headers['Authorization']
+        student = Student.query.filter(Student.token == token).first()
+        studentid = student.id
+        studentFavoStoresData = StudentStoresRelation.query.filter(StudentStoresRelation.studentid== studentid)
+
+        studentFavoStores = []
+        for favoStore in studentFavoStoresData:
+            studentFavoStores.append(favoStore.storeid)
+
+        for i in range(len(stores)):
+            print(stores[i].store_image)
+            stores[i].store_image = os.path.join(app.config['UPLOAD_FOLDER'],"store_imgs",stores[i].store_image)
+
+        return jsonify({"data":[store.toMap() for store in stores],
+                        "favo":studentFavoStores})
 
     @app.route('/stores/<int:store_id>/', methods=['GET'])
     def get_store(store_id):
@@ -168,10 +186,11 @@ def register_routes(app, db):
         )
         if 'store_img' in request.files:
             store_img = request.files['store_img']
-            store_img_name = secure_filename(store_img.filename)
+            store_img_extension = str(store_img.filename).split(".")[-1]
+            store_img_name = secure_filename(str(uuid.uuid4()))+"."+store_img_extension
             store_img_path = os.path.join(app.config['UPLOAD_FOLDER'],"store_imgs",store_img_name)
             store_img.save(store_img_path)
-            store.store_image = store_img_path
+            store.store_image = store_img_name
         else:
             return jsonify({"error":"Error In Store Image"}), 400
         db.session.add(store)
@@ -210,15 +229,24 @@ def register_routes(app, db):
 
     @app.route('/stores/addtofavo/',methods=['POST'])
     def addtofavo():
-        data = request.get_json()
-        studentid = data['userid']
-        storeid = data['storeid']
+        try:
+            data = request.get_json()
+            token = request.headers['Authorization']
+            
+            student = Student.query.filter(Student.token ==token).first()
+            studentid = student.id
+            storeid = data['storeid']
+            print(studentid,storeid)
+        except Exception as e:
+            print(e)
+            return {"message": "You Are Not Authorized","error":str(e)},400
+        
         is_exist = StudentStoresRelation.query.filter(StudentStoresRelation.studentid == studentid,StudentStoresRelation.storeid == storeid).first()
         if is_exist:
-            return jsonify({"error": "This Relation Is Already Exist"}),400
+            return jsonify({"message": "This Relation Is Already Exist"}),400
         studentStoreRelation = StudentStoresRelation(
-            studentid,
-            storeid
+            studentid =studentid,
+            storeid= storeid
         )
         db.session.add(studentStoreRelation)
         db.session.commit()
@@ -226,12 +254,22 @@ def register_routes(app, db):
 
     @app.route('/stores/removefromfavo/',methods=['POST'])
     def removefromfavo():
-        data = request.get_json()
-        studentid = data['userid']
+        try:
+            data = request.get_json()
+            data = request.get_json()
+            token = request.headers['Authorization']
+            
+            student = Student.query.filter(Student.token ==token).first()
+            studentid = student.id
+        except Exception as e:
+            print(e)
+            return {"message": "You Are Not Authorized","error":str(e)},400
+        
+            
         storeid = data['storeid']
         relation = StudentStoresRelation.query.filter(StudentStoresRelation.studentid == studentid,StudentStoresRelation.storeid == storeid).first()
         if not relation:
-            return jsonify({"error": "This Relation Is Not Exist"}),400
+            return jsonify({"message": "This Relation Is Not Exist"}),400
         
         db.session.delete(relation)
         db.session.commit()
