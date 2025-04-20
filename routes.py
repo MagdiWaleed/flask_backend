@@ -98,7 +98,9 @@ def register_routes(app, db):
 
                     profile_pic = request.files['profile_pic_path']
                     profile_pic_name = secure_filename(profile_pic.filename)
-                    profile_pic.save(os.path.join(app.config['UPLOAD_FOLDER'],"profile_pics",profile_pic_name))
+                    profile_pic_path = os.path.join(app.config['UPLOAD_FOLDER'],"profile_pics",profile_pic_name)
+                    print(profile_pic_name)
+                    profile_pic.save(profile_pic_path)
                     student.profile_pic = profile_pic_name
                 
                 elif not student.profile_pic and student.profile_pic != 'DEFAULT_PROFILE_IMAGE.png':
@@ -106,7 +108,7 @@ def register_routes(app, db):
                     profile_pic_name = secure_filename(profile_pic.filename)
                     profile_pic_path = os.path.join(app.config['UPLOAD_FOLDER'],"profile_pics",profile_pic_name)
                     profile_pic.save(profile_pic_path)
-                    student.profile_pic = profile_pic_path
+                    student.profile_pic = profile_pic_name
 
             
             elif 'profile_pic_path' in data:
