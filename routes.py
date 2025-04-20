@@ -1,5 +1,5 @@
 from flask import request,jsonify
-from models import Student
+from models import Student, Store
 from werkzeug.utils import secure_filename
 import json
 import os
@@ -139,6 +139,66 @@ def register_routes(app, db):
         db.session.delete(student)  
         db.session.commit()  
         return jsonify({"message": "Student Deleted Successfully"})
+############################################################################################################################
+            # stores
+############################################################################################################################
+    @app.route('/stores/', methods=['GET'])
+    def get_stores():
+        stores = Store.query.all()
+        return jsonify([store.toMap() for store in stores])
+
+    @app.route('/stores/<int:store_id>/', methods=['GET'])
+    def get_store(store_id):
+        store = Store.query.filter_by(store_id=store_id).first()
+        if not store:
+            return jsonify({'error': 'Store not found'}), 404
+        return jsonify(store.toMap())
+
+    @app.route('/stores/', methods=['POST'])
+    def create_store():
+        data = request.get_json()
+        store = Store(
+            store_name=data['store_name'],
+            store_image=data.get('store_image'),
+            store_review=data['store_review'],
+            store_location_longitude=data['store_location_longitude'],
+            store_location_latitude=data['store_location_latitude']
+        )
+        db.session.add(store)
+        db.session.commit()
+        return jsonify({'message': 'Store created successfully', 'store': store.toMap()}), 201
+
+    @app.route('/stores/<int:store_id>/', methods=['PUT'])
+    def update_store(store_id):
+        data = request.get_json()
+        store = Store.query.filter_by(store_id=store_id).first()
+        if not store:
+            return jsonify({'error': 'Store not found'}), 404
+
+        store.store_name = data.get('store_name', store.store_name)
+        store.store_image = data.get('store_image', store.store_image)
+        store.store_review = data.get('store_review', store.store_review)
+        store.store_location_longitude = data.get('store_location_longitude', store.store_location_longitude)
+        store.store_location_latitude = data.get('store_location_latitude', store.store_location_latitude)
+
+        db.session.commit()
+        return jsonify({'message': 'Store updated successfully', 'store': store.toMap()})
+
+    @app.route('/stores/<int:store_id>/', methods=['DELETE'])
+    def delete_store(store_id):
+        store = Store.query.filter_by(store_id=store_id).first()
+        if not store:
+            return jsonify({'error': 'Store not found'}), 404
+
+        if store.store_image:
+            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], store.store_image))
+
+        db.session.delete(store)
+        db.session.commit()
+        return jsonify({'message': 'Store deleted successfully'})
+
+
+    
 
     
     

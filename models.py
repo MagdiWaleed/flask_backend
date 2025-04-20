@@ -29,5 +29,21 @@ class Student(db.Model):
             "profile_pic_path":self.profile_pic
         }
 
-    
+class Store(db.Model):
+    __tablename__ = 'store'
+    store_id = db.Column(db.Integer, primary_key=True, unique=True)
+    store_name = db.Column(db.String, nullable=False)
+    store_image = db.Column(db.String, nullable=True)
+    store_review = db.Column(db.Float, nullable=False, default=0.0)
+    store_location_longitude = db.Column(db.Float, nullable=False)
+    store_location_latitude = db.Column(db.Float, nullable=False)
 
+    def toMap(self):
+        return {
+            "store_id": self.store_id,
+            "store_name": self.store_name,
+            "store_image": self.store_image,
+            "store_review": self.store_review,
+            "store_location_longitude": self.store_location_longitude,
+            "store_location_latitude": self.store_location_latitude
+        }
